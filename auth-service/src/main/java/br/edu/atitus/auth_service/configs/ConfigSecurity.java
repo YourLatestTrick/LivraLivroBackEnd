@@ -12,34 +12,38 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 @Configuration
 public class ConfigSecurity {
-	@Bean
-	// SecurityFilterChain getFilterChain(HttpSecurity http, AuthTokenFilter
-	// authTokenFilter) throws Exception {
-	SecurityFilterChain getFilterChain(HttpSecurity http) throws Exception {
-		http.csrf(csrf -> csrf.disable())
-				.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-				.authorizeHttpRequests(auth -> auth
-						.requestMatchers("/auth/**").permitAll()
-						// .requestMatchers("/auth*","/auth/**","/swagger-ui*", "swagger-ui/**",
-						// "/v3/api-docs/**").permitAll()
-						// .requestMatchers(HttpMethod.OPTIONS).permitAll()
-						.requestMatchers("/ws**", "/ws/**").permitAll().anyRequest().authenticated());
-				//.addFilterBefore(authTokenFilter, UsernamePasswordAuthenticationFilter.class);
-		return http.build();
-	}
 
-	@Bean
-	WebMvcConfigurer corsConfigurer() {
-		return new WebMvcConfigurer() {
-			@Override
-			public void addCorsMappings(CorsRegistry registry) {
-				registry.addMapping("/**").allowedOrigins("*");
-			}
-		};
-	}
+    @Bean
+    SecurityFilterChain getFilterChain(HttpSecurity http) throws Exception {
+        http
+            .csrf(csrf -> csrf.disable())
+            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .authorizeHttpRequests(auth -> auth
+                // libera signup e signin tanto com quanto sem prefixo /auth
+                .requestMatchers("/signup", "/signin", "/auth/**").permitAll()
+                // libera endpoints WebSocket ou públicos
+                .requestMatchers("/ws**", "/ws/**").permitAll()
+                // exige autenticação pro resto
+                .anyRequest().authenticated()
+            );
+        return http.build();
+    }
 
-	@Bean
-	PasswordEncoder getpPasswordEncoder() {
-		return new BCryptPasswordEncoder();
-	}
+    @Bean
+    WebMvcConfigurer corsConfigurer() {
+        return new WebMvcConfigurer() {
+            @Override
+            public void addCorsMappings(CorsRegistry registry) {
+                registry.addMapping("/**")
+                        .allowedOrigins("*")
+                        .allowedMethods("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS")
+                        .allowedHeaders("*");
+            }
+        };
+    }
+
+    @Bean
+    PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
 }

@@ -31,7 +31,7 @@ services:
   greeting-service:
     image: greeting-service:latest
     build:
-      context: ./gretting-service
+      context: ./greeting-service
     depends_on:
       - discovery-service
       - config-service
@@ -85,6 +85,7 @@ services:
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: 654333
       EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://discovery-service:8761/eureka
+
   # -------------------------------
   db-user-auth:
     image: postgres:17
@@ -216,6 +217,3 @@ services:
       - discovery-service
     environment:
       EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://discovery-service:8761/eureka
-    
-# -------------------------------
-

@@ -12,7 +12,6 @@ import org.springframework.stereotype.Service;
 import br.edu.atitus.wishlist_service.clients.BookClient;
 import br.edu.atitus.wishlist_service.clients.BookResponse;
 import br.edu.atitus.wishlist_service.clients.CurrencyClient;
-import br.edu.atitus.wishlist_service.clients.CurrencyResponse;
 import br.edu.atitus.wishlist_service.entities.WishlistEntity;
 import br.edu.atitus.wishlist_service.entities.WishlistItemEntity;
 import br.edu.atitus.wishlist_service.repositories.WishlistItemRepository;
@@ -27,7 +26,8 @@ public class WishlistService {
 	private final BookClient bookClient;
 	private final CurrencyClient currencyClient;
 
-	public WishlistService(WishlistRepository wishlistRepository, WishlistItemRepository wishlistItemRepository,
+	public WishlistService(WishlistRepository wishlistRepository,
+			WishlistItemRepository wishlistItemRepository,
 			BookClient bookClient, CurrencyClient currencyClient) {
 		this.wishlistRepository = wishlistRepository;
 		this.wishlistItemRepository = wishlistItemRepository;
@@ -45,6 +45,7 @@ public class WishlistService {
 			}
 			return wishlist;
 		}
+
 		WishlistEntity newWishlist = new WishlistEntity();
 		newWishlist.setUserId(userId);
 		newWishlist.setItems(new java.util.ArrayList<>());
@@ -53,18 +54,31 @@ public class WishlistService {
 
 	@Transactional
 	public WishlistEntity addItemToWishlist(UUID userId, UUID bookId) {
-		WishlistEntity wishlist = getOrCreateWishlist(userId);
-		Optional<WishlistItemEntity> existingItem = wishlistItemRepository.findByBookIdAndWishlistId(bookId,
-				wishlist.getId());
-		if (existingItem.isPresent()) {
-			return wishlist;
+		BookResponse book;
+		try {
+			book = bookClient.getBookById(bookId);
+		} catch (Exception e) {
+			throw new IllegalArgumentException("Livro com ID " + bookId + " não encontrado.");
 		}
+
+		if (book == null) {
+			throw new IllegalArgumentException("Livro com ID " + bookId + " não encontrado.");
+		}
+
+		WishlistEntity wishlist = getOrCreateWishlist(userId);
+		boolean alreadyExists = wishlistItemRepository.findByBookIdAndWishlistId(bookId, wishlist.getId()).isPresent();
+		if (alreadyExists) {
+			throw new IllegalArgumentException("O livro já está na lista de desejos.");
+		}
+
 		WishlistItemEntity newItem = new WishlistItemEntity();
 		newItem.setBookId(bookId);
 		newItem.setWishlist(wishlist);
+
 		if (wishlist.getItems() == null) {
 			wishlist.setItems(new java.util.ArrayList<>());
 		}
+
 		wishlist.getItems().add(newItem);
 		return wishlistRepository.save(wishlist);
 	}
@@ -73,10 +87,14 @@ public class WishlistService {
 	public void removeItemFromWishlist(UUID userId, UUID itemId) {
 		WishlistEntity wishlist = getOrCreateWishlist(userId);
 		if (wishlist.getItems() == null || wishlist.getItems().isEmpty()) {
-			throw new RuntimeException("Wishlist is empty");
+			throw new RuntimeException("Wishlist está vazia");
 		}
-		WishlistItemEntity item = wishlist.getItems().stream().filter(i -> i.getId().equals(itemId)).findFirst()
-				.orElseThrow(() -> new RuntimeException("Item not found in wishlist"));
+
+		WishlistItemEntity item = wishlist.getItems().stream()
+				.filter(i -> i.getId().equals(itemId))
+				.findFirst()
+				.orElseThrow(() -> new RuntimeException("Item não encontrado na wishlist"));
+
 		wishlist.getItems().remove(item);
 		wishlistRepository.save(wishlist);
 	}
@@ -85,10 +103,14 @@ public class WishlistService {
 	public void removeItemByBookId(UUID userId, UUID bookId) {
 		WishlistEntity wishlist = getOrCreateWishlist(userId);
 		if (wishlist.getItems() == null || wishlist.getItems().isEmpty()) {
-			throw new RuntimeException("Wishlist is empty");
+			throw new RuntimeException("Wishlist está vazia");
 		}
-		WishlistItemEntity item = wishlist.getItems().stream().filter(i -> i.getBookId().equals(bookId)).findFirst()
-				.orElseThrow(() -> new RuntimeException("Book not found in wishlist"));
+
+		WishlistItemEntity item = wishlist.getItems().stream()
+				.filter(i -> i.getBookId().equals(bookId))
+				.findFirst()
+				.orElseThrow(() -> new RuntimeException("Livro não encontrado na wishlist"));
+
 		wishlist.getItems().remove(item);
 		wishlistRepository.save(wishlist);
 	}
@@ -106,14 +128,20 @@ public class WishlistService {
 	public WishlistEntity getWishlistWithDetails(UUID userId, String targetCurrency) {
 		WishlistEntity wishlist = getOrCreateWishlist(userId);
 		List<WishlistItemEntity> items = wishlist.getItems();
+
 		if (items != null && !items.isEmpty()) {
 			for (WishlistItemEntity item : items) {
 				if (item.getBookId() != null) {
 					try {
-						BookResponse book = bookClient.getBookByIdWithCurrency(item.getBookId(), targetCurrency);
+						BookResponse book = bookClient.getBookById(item.getBookId());
 						item.setBook(book);
-						if (book != null && book.convertedPrice() != null) {
-							item.setConvertedPrice(book.convertedPrice());
+						if (book != null && book.price() != null) {
+							Double rate = currencyClient.getCurrency(
+								book.price().doubleValue(),
+								book.currency(),
+								targetCurrency
+							);
+							item.setConvertedPrice(BigDecimal.valueOf(rate));
 						}
 					} catch (Exception e) {
 						continue;
@@ -127,12 +155,18 @@ public class WishlistService {
 	public Page<WishlistItemEntity> getWishlistItemsPaginated(UUID userId, String targetCurrency, Pageable pageable) {
 		WishlistEntity wishlist = getOrCreateWishlist(userId);
 		Page<WishlistItemEntity> items = wishlistItemRepository.findByWishlistId(wishlist.getId(), pageable);
+
 		for (WishlistItemEntity item : items) {
 			try {
-				BookResponse book = bookClient.getBookByIdWithCurrency(item.getBookId(), targetCurrency);
+				BookResponse book = bookClient.getBookById(item.getBookId());
 				item.setBook(book);
-				if (book != null && book.convertedPrice() != null) {
-					item.setConvertedPrice(book.convertedPrice());
+				if (book != null && book.price() != null) {
+					Double rate = currencyClient.getCurrency(
+						book.price().doubleValue(),
+						book.currency(),
+						targetCurrency
+					);
+					item.setConvertedPrice(BigDecimal.valueOf(rate));
 				}
 			} catch (Exception e) {
 				continue;
@@ -146,7 +180,7 @@ public class WishlistService {
 		if (wishlist.getItems() == null || wishlist.getItems().isEmpty()) {
 			return false;
 		}
-		return wishlist.getItems().stream().anyMatch(item -> item.getBookId().equals(bookId));
+		return wishlist.getItems().stream()
+				.anyMatch(item -> item.getBookId().equals(bookId));
 	}
 }
-

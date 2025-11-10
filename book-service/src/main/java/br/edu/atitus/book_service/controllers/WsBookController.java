@@ -6,6 +6,7 @@ import java.util.UUID;
 import org.springframework.beans.BeanUtils;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -26,76 +27,86 @@ import jakarta.validation.Valid;
 @RestController
 @RequestMapping("/ws/books")
 public class WsBookController {
-	private final BookRepository repository;
-	private BookGenreRepository bookGenreRepository;
-	private BookConditionRepository bookConditionRepository;
+    private final BookRepository repository;
+    private final BookGenreRepository bookGenreRepository;
+    private final BookConditionRepository bookConditionRepository;
 
-	public WsBookController(BookRepository repository, BookGenreRepository bookGenreRepository,
-			BookConditionRepository bookConditionRepository) {
-		super();
-		this.repository = repository;
-		this.bookGenreRepository = bookGenreRepository;
-		this.bookConditionRepository = bookConditionRepository;
-	}
+    public WsBookController(BookRepository repository, BookGenreRepository bookGenreRepository,
+            BookConditionRepository bookConditionRepository) {
+        this.repository = repository;
+        this.bookGenreRepository = bookGenreRepository;
+        this.bookConditionRepository = bookConditionRepository;
+    }
 
-	private BookEntity convertDto2Entity(BookDTO dto) throws Exception {
-		var book = new BookEntity();
-		BeanUtils.copyProperties(dto, book);
+    private BookEntity convertDto2Entity(BookDTO dto) throws Exception {
+        var book = new BookEntity();
+        BeanUtils.copyProperties(dto, book);
 
-		if (dto.genresId() != null && !dto.genresId().isEmpty()) {
-			List<BookGenreEntity> genres = bookGenreRepository.findAllById(dto.genresId());
-			book.setGenre(genres);
-		}
+        if (dto.genresId() != null && !dto.genresId().isEmpty()) {
+            List<BookGenreEntity> genres = bookGenreRepository.findAllById(dto.genresId());
+            book.setGenre(genres);
+        }
 
-		if (dto.bookConditionId() != null) {
-			BookConditionEntity condition = bookConditionRepository.findById(dto.bookConditionId())
-					.orElseThrow(() -> new Exception("Book Contidition not found"));
-			book.setBookCondition(condition);
-		}
+        if (dto.bookConditionId() != null) {
+            BookConditionEntity condition = bookConditionRepository.findById(dto.bookConditionId())
+                    .orElseThrow(() -> new Exception("Book Condition not found"));
+            book.setBookCondition(condition);
+        }
 
-		return book;
-	}
+        return book;
+    }
 
-	@PostMapping
-	public ResponseEntity<BookEntity> createBook(@Valid @RequestBody BookDTO dto, @RequestHeader("X-User-Id") UUID UserId,
-			@RequestHeader("X-User-Email") String emailUser, @RequestHeader("X-User-Type") Integer userType)
-			throws Exception {
+    @PostMapping
+    public ResponseEntity<BookEntity> createBook(@Valid @RequestBody BookDTO dto,
+            @RequestHeader("X-User-Id") UUID userId,
+            @RequestHeader("X-User-Email") String emailUser,
+            @RequestHeader("X-User-Type") Integer userType)
+            throws Exception {
 
-		if (userType != 0 && userType != 1)
-			throw new SecurityException("Usuário sem permissão");
+        if (userType != 0 && userType != 1)
+            throw new SecurityException("Usuário sem permissão");
 
-		var book = convertDto2Entity(dto);
-		repository.save(book);
+        var book = convertDto2Entity(dto);
+        repository.save(book);
 
-		return ResponseEntity.status(201).body(book);
-	}
+        return ResponseEntity.status(201).body(book);
+    }
 
-	@PatchMapping("/{idBook}")
-	public ResponseEntity<BookEntity> updateBook(@PathVariable UUID idBook, @Valid @RequestBody BookDTO dto,
-			@RequestHeader("X-User-Id") UUID UserId, @RequestHeader("X-User-Email") String emailUser,
-			@RequestHeader("X-User-Type") Integer userType) throws Exception {
+    @PatchMapping("/{idBook}")
+    public ResponseEntity<BookEntity> updateBook(@PathVariable UUID idBook, @Valid @RequestBody BookDTO dto,
+            @RequestHeader("X-User-Id") UUID userId,
+            @RequestHeader("X-User-Email") String emailUser,
+            @RequestHeader("X-User-Type") Integer userType) throws Exception {
 
-		if (userType != 0 && userType != 1)
-			throw new SecurityException("Usuário sem permissão");
+        if (userType != 0 && userType != 1)
+            throw new SecurityException("Usuário sem permissão");
 
-		var book = convertDto2Entity(dto);
-		book.setId(idBook);
-		repository.save(book);
+        var book = convertDto2Entity(dto);
+        book.setId(idBook);
+        repository.save(book);
 
-		return ResponseEntity.ok(book);
-	}
+        return ResponseEntity.ok(book);
+    }
 
-	@DeleteMapping("/{idBook}")
-	public ResponseEntity<String> deleteBook(@PathVariable UUID idBook, @RequestHeader("X-User-Id") UUID UserId,
-			@RequestHeader("X-User-Email") String emailUser, @RequestHeader("X-User-Type") Integer userType)
-			throws Exception {
+    @DeleteMapping("/{idBook}")
+    public ResponseEntity<String> deleteBook(@PathVariable UUID idBook,
+            @RequestHeader("X-User-Id") UUID userId,
+            @RequestHeader("X-User-Email") String emailUser,
+            @RequestHeader("X-User-Type") Integer userType)
+            throws Exception {
 
-		if (userType != 0 && userType != 1)
-			throw new SecurityException("Usuário sem permissão");
+        if (userType != 0 && userType != 1)
+            throw new SecurityException("Usuário sem permissão");
 
-		repository.deleteById(idBook);
+        repository.deleteById(idBook);
+        return ResponseEntity.ok("Excluído");
+    }
 
-		return ResponseEntity.ok("Excluído"); // Ou null
-	}
-
+    // Novo endpoint GET
+    @GetMapping("/{idBook}")
+    public ResponseEntity<BookEntity> getBookById(@PathVariable UUID idBook) throws Exception {
+        BookEntity book = repository.findById(idBook)
+                .orElseThrow(() -> new Exception("Livro não encontrado"));
+        return ResponseEntity.ok(book);
+    }
 }

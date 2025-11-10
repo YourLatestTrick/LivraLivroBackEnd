@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import br.edu.atitus.wishlist_service.dtos.WishlistItemDTO;
+import br.edu.atitus.wishlist_service.dtos.WishlistItemRequestDTO;
 import br.edu.atitus.wishlist_service.entities.WishlistEntity;
 import br.edu.atitus.wishlist_service.entities.WishlistItemEntity;
 import br.edu.atitus.wishlist_service.services.WishlistService;
@@ -35,9 +35,12 @@ public class WishlistController {
 	}
 
 	@GetMapping
-	public ResponseEntity<WishlistEntity> getWishlist(@RequestParam(defaultValue = "USD") String currency,
-			@RequestHeader("X-User-Id") UUID userId, @RequestHeader("X-User-Email") String userEmail,
+	public ResponseEntity<WishlistEntity> getWishlist(
+			@RequestParam(defaultValue = "USD") String currency,
+			@RequestHeader("X-User-Id") UUID userId,
+			@RequestHeader("X-User-Email") String userEmail,
 			@RequestHeader("X-User-Type") Integer userType) {
+		
 		WishlistEntity wishlist = wishlistService.getWishlistWithDetails(userId, currency.toUpperCase());
 		return ResponseEntity.ok(wishlist);
 	}
@@ -45,50 +48,67 @@ public class WishlistController {
 	@GetMapping("/items")
 	public ResponseEntity<Page<WishlistItemEntity>> getWishlistItems(
 			@PageableDefault(page = 0, size = 10, sort = "id", direction = Direction.ASC) Pageable pageable,
-			@RequestParam(defaultValue = "USD") String currency, @RequestHeader("X-User-Id") UUID userId,
-			@RequestHeader("X-User-Email") String userEmail, @RequestHeader("X-User-Type") Integer userType) {
-		Page<WishlistItemEntity> items = wishlistService.getWishlistItemsPaginated(userId, currency.toUpperCase(),
-				pageable);
+			@RequestParam(defaultValue = "USD") String currency,
+			@RequestHeader("X-User-Id") UUID userId,
+			@RequestHeader("X-User-Email") String userEmail,
+			@RequestHeader("X-User-Type") Integer userType) {
+		
+		Page<WishlistItemEntity> items = wishlistService.getWishlistItemsPaginated(
+				userId, currency.toUpperCase(), pageable);
 		return ResponseEntity.ok(items);
 	}
 
 	@GetMapping("/check/{bookId}")
-	public ResponseEntity<Boolean> checkBookInWishlist(@PathVariable UUID bookId,
-			@RequestHeader("X-User-Id") UUID userId, @RequestHeader("X-User-Email") String userEmail,
+	public ResponseEntity<Boolean> checkBookInWishlist(
+			@PathVariable UUID bookId,
+			@RequestHeader("X-User-Id") UUID userId,
+			@RequestHeader("X-User-Email") String userEmail,
 			@RequestHeader("X-User-Type") Integer userType) {
+		
 		boolean isInWishlist = wishlistService.isBookInWishlist(userId, bookId);
 		return ResponseEntity.ok(isInWishlist);
 	}
 
 	@PostMapping("/items")
-	public ResponseEntity<WishlistEntity> addItemToWishlist(@Valid @RequestBody WishlistItemDTO itemDTO,
-			@RequestHeader("X-User-Id") UUID userId, @RequestHeader("X-User-Email") String userEmail,
+	public ResponseEntity<WishlistEntity> addItemToWishlist(
+			@Valid @RequestBody WishlistItemRequestDTO itemDTO,
+			@RequestHeader("X-User-Id") UUID userId,
+			@RequestHeader("X-User-Email") String userEmail,
 			@RequestHeader("X-User-Type") Integer userType) {
-		WishlistEntity wishlist = wishlistService.addItemToWishlist(userId, itemDTO.bookId());
+		
+		WishlistEntity wishlist = wishlistService.addItemToWishlist(userId, itemDTO.getBookId());
 		return ResponseEntity.status(HttpStatus.CREATED).body(wishlist);
 	}
 
 	@DeleteMapping("/items/{itemId}")
-	public ResponseEntity<String> removeItemFromWishlist(@PathVariable UUID itemId,
-			@RequestHeader("X-User-Id") UUID userId, @RequestHeader("X-User-Email") String userEmail,
+	public ResponseEntity<String> removeItemFromWishlist(
+			@PathVariable UUID itemId,
+			@RequestHeader("X-User-Id") UUID userId,
+			@RequestHeader("X-User-Email") String userEmail,
 			@RequestHeader("X-User-Type") Integer userType) {
+		
 		wishlistService.removeItemFromWishlist(userId, itemId);
 		return ResponseEntity.ok("Item removido da lista de desejos");
 	}
 
 	@DeleteMapping("/items/book/{bookId}")
-	public ResponseEntity<String> removeItemByBookId(@PathVariable UUID bookId,
-			@RequestHeader("X-User-Id") UUID userId, @RequestHeader("X-User-Email") String userEmail,
+	public ResponseEntity<String> removeItemByBookId(
+			@PathVariable UUID bookId,
+			@RequestHeader("X-User-Id") UUID userId,
+			@RequestHeader("X-User-Email") String userEmail,
 			@RequestHeader("X-User-Type") Integer userType) {
+		
 		wishlistService.removeItemByBookId(userId, bookId);
 		return ResponseEntity.ok("Livro removido da lista de desejos");
 	}
 
 	@DeleteMapping
-	public ResponseEntity<String> clearWishlist(@RequestHeader("X-User-Id") UUID userId,
-			@RequestHeader("X-User-Email") String userEmail, @RequestHeader("X-User-Type") Integer userType) {
+	public ResponseEntity<String> clearWishlist(
+			@RequestHeader("X-User-Id") UUID userId,
+			@RequestHeader("X-User-Email") String userEmail,
+			@RequestHeader("X-User-Type") Integer userType) {
+		
 		wishlistService.clearWishlist(userId);
 		return ResponseEntity.ok("Lista de desejos limpa");
 	}
 }
-

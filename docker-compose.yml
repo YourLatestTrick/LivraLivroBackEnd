@@ -1,3 +1,5 @@
+version: '3.8'
+
 volumes:
   db-book-data:
   db-currency-data:
@@ -16,7 +18,7 @@ services:
       context: ./discovery-service
     ports:
       - "8761:8761"
-    
+
   # -------------------------------
   config-service:
     image: config-service:latest
@@ -26,7 +28,7 @@ services:
       - discovery-service
     environment:
       EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://discovery-service:8761/eureka
-  
+
   # -------------------------------
   greeting-service:
     image: greeting-service:latest
@@ -48,7 +50,7 @@ services:
       POSTGRES_PASSWORD: 654333
     volumes:
       - db-currency-data:/var/lib/postgresql/data
-      
+
   currency-service:
     image: currency-service:latest
     build:
@@ -61,7 +63,7 @@ services:
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: 654333
       EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://discovery-service:8761/eureka
-    
+
   # -------------------------------
   db-book:
     image: postgres:17
@@ -71,7 +73,7 @@ services:
       POSTGRES_PASSWORD: 654333
     volumes:
       - db-book-data:/var/lib/postgresql/data
-    
+
   book-service:
     image: book-service:latest
     build:
@@ -80,6 +82,8 @@ services:
       - discovery-service
       - db-book
       - currency-service
+    ports:
+      - "8012:8012"   # ✅ Porta exposta para acesso via Postman/localhost
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://db-book:5432/db_book
       SPRING_DATASOURCE_USERNAME: postgres
@@ -95,7 +99,7 @@ services:
       POSTGRES_PASSWORD: 654333
     volumes:
       - db-user-auth-data:/var/lib/postgresql/data
-    
+
   auth-service:
     image: auth-service:latest
     build:
@@ -108,7 +112,7 @@ services:
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: 654333
       EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://discovery-service:8761/eureka
-    
+
   # -------------------------------
   db-user-profile:
     image: postgres:17
@@ -118,7 +122,7 @@ services:
       POSTGRES_PASSWORD: 654333
     volumes:
       - db-user-profile-data:/var/lib/postgresql/data
-    
+
   user-service:
     image: user-service:latest
     build:
@@ -142,7 +146,7 @@ services:
       POSTGRES_PASSWORD: 654333
     volumes:
       - db-order-data:/var/lib/postgresql/data
-    
+
   order-service:
     image: order-service:latest
     build:
@@ -155,7 +159,7 @@ services:
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: 654333
       EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://discovery-service:8761/eureka
-    
+
   # -------------------------------
   db-cart:
     image: postgres:17
@@ -165,7 +169,7 @@ services:
       POSTGRES_PASSWORD: 654333
     volumes:
       - db-cart-data:/var/lib/postgresql/data
-    
+
   cart-service:
     image: cart-service:latest
     build:
@@ -175,6 +179,8 @@ services:
       - db-cart
       - book-service
       - currency-service
+    ports:
+      - "8010:8010"
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://db-cart:5432/db_cart
       SPRING_DATASOURCE_USERNAME: postgres
@@ -190,7 +196,7 @@ services:
       POSTGRES_PASSWORD: 654333
     volumes:
       - db-wishlist-data:/var/lib/postgresql/data
-    
+
   wishlist-service:
     image: wishlist-service:latest
     build:
@@ -200,6 +206,8 @@ services:
       - db-wishlist
       - book-service
       - currency-service
+    ports:
+      - "8011:8011"
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://db-wishlist:5432/db_wishlist
       SPRING_DATASOURCE_USERNAME: postgres
